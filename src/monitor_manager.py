@@ -147,7 +147,7 @@ class Application:
                 respond = self.resolution_page()
 
     def main_page(self):
-        res = self.rofi_return(">> Select a monitor !\n>> Primary Monitor : {}\n>> Dual Mode : {}".format(self.primary, self.dual), self.monitors.keys(), self.main_current_select)
+        res = self.rofi_return(">> Select a monitor !\n>> Primary Monitor : {}\n>> Extend Mode : {}".format(self.primary, self.dual), self.monitors.keys(), self.main_current_select)
         if (len(res)>0):
             res = res[0:len(res)-1]
             if(res!=self.current_monitor):
