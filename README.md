@@ -1,6 +1,6 @@
 # I3wm Monitor Selector Python Script
 
-## Info
+## Introduction
 A simple script helps you make some adjustments to your monitors by rofi !
 >The script is based on python, rofi and command ```xrandr```
   - Select primary monitor
@@ -9,16 +9,38 @@ A simple script helps you make some adjustments to your monitors by rofi !
   - switching the monitor on and off
   - choose the position of monitors ( relative to the position of primary monitor )
 
-## ScreenShots
-  - Main Page
+## Output
+  - Main page
+  > Extend Mode : extend or same
+
+  ![](https://github.com/novel2430/i3wm-monitor-selector-python/raw/main/pic/001.png)
+  
   - Menu Page for primary monitor
+  > On Status : on-off status of current select
+  
+  ![](https://github.com/novel2430/i3wm-monitor-selector-python/raw/main/pic/002.png)
+
   - Menu Page for other monitors
-  - Resolution page
+  > same : same output with primary monitor\
+  > left, right, above, below : relative position of primary monitor
+
+  ![](https://github.com/novel2430/i3wm-monitor-selector-python/raw/main/pic/003.png)
+
+  - Resolution Page
+  > Select resolution
+
+  ![](https://github.com/novel2430/i3wm-monitor-selector-python/raw/main/pic/004.png)
 
 ## Requirement
   - Using [I3wm](https://github.com/i3/i3) as your window manager
   - [Rofi](https://github.com/davatorium/rofi)
   - [Python (>=3.5)](https://www.python.org/)
+
+## Installation
+  ```bash
+  git clone https://github.com/novel2430/i3wm-monitor-selector-python
+  ```
+  move ```src/monitor-selector.py``` to anywhere you want 
 
 ## How to use
 ### I3 Config
@@ -73,7 +95,7 @@ A simple script helps you make some adjustments to your monitors by rofi !
   ```bash
   monitor-selector.py
   ```
-  You can build key binding to this script
+  You can set key binding to this script
 
 ## TODO 
   - Make no chages to the user's i3 config file
