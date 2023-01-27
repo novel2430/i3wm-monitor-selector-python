@@ -31,7 +31,7 @@ class Util:
             re_res = re.search(' connected', cur)
             if (state == 0 and re_res != None):
                 state = 1
-                re_res = re.search('[\w]+', cur)
+                re_res = re.search('[\S]+', cur)
                 if (re_res != None):
                     monitor_name = re_res.group()
                 re_res = re.search('[0-9]+x[0-9]+', cur)
@@ -49,7 +49,7 @@ class Util:
                 state = 0
                 on_flag = False
                 if (re_res != None):
-                    re_res = re.search('[\w]+', cur)
+                    re_res = re.search('[\S]+', cur)
                     if (re_res != None):
                         monitor_name = re_res.group()
                     re_res = re.search('[0-9]+x[0-9]+', cur)
