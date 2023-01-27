@@ -14,6 +14,8 @@ class Monitor:
         self.resolution = resolution_list 
         self.current_resolution = Util.current_resolution(self.name)
         self.is_on = False
+        self.state = 'same'
+        self.workspaces = []
     def update_resolution(self):
         self.current_resolution = Util.current_resolution(self.name)
 
@@ -135,10 +137,13 @@ class Application:
         self.menu_primiry_map = Util.build_map(self.menu_list_primiry)
         self.menu_map = Util.build_map(self.menu_list)
         self.dual = self.is_dual()
+        self.current_output = self.i3_get_current_focus_workspace_output()
+        self.current_workspace = self.i3_get_current_focus_workspace()
 
     def run(self):
         respond = 'Main'
         while(respond != 'None'):
+            self.i3_focus_current_workspace()
             if(respond == 'Main'):
                 respond = self.main_page()
             elif(respond == 'Menu'):
@@ -214,8 +219,19 @@ class Application:
         self.primary = name
 
     def rofi_return(self, message, list, curr_select):
-        cmd = 'rofi -selected-row {:d} -dmenu -theme-str "window {{width: 20%;}}" -mesg "{}"'.format(curr_select, message)
+        cmd = 'rofi -monitor {} -selected-row {:d} -dmenu -theme-str "window {{width: 20%;}}" -mesg "{}"'.format(self.current_output, curr_select, message)
         return Util.subprocess_run_input(cmd, Util.build_string(list))
+
+    def setup_monitor_workspace(self):
+        if (self.dual):
+            cmd = 'i3-msg -t get_workspaces'
+            res = Util.subprocess_run_no_input(cmd)
+            js = json.loads(res)
+            for j in js:
+                num = j.get('num')
+                out = j.get('output')
+                self.monitors[out].workspaces.append(num)
+            
 
     def i3_move(self):
         cmd = 'i3-msg -t get_workspaces'
@@ -237,6 +253,31 @@ class Application:
         cmd = 'i3-msg "exec --no-startup-id {}"'.format(self.config.cmd_set_background)
         Util.subprocess_run_no_input(cmd)
 
+    def i3_get_current_focus_workspace(self):
+        cmd = 'i3-msg -t get_workspaces'
+        res = Util.subprocess_run_no_input(cmd)
+        js = json.loads(res)
+        for j in js:
+            is_focus = j.get('focused')
+            if(is_focus):
+                return j.get('name')
+        return None
+
+
+    def i3_get_current_focus_workspace_output(self):
+        cmd = 'i3-msg -t get_workspaces'
+        res = Util.subprocess_run_no_input(cmd)
+        js = json.loads(res)
+        for j in js:
+            is_focus = j.get('focused')
+            if(is_focus):
+                return j.get('output')
+        return None
+
+    def i3_focus_current_workspace(self):
+        cmd = 'i3-msg workspace "{}"'.format(self.current_workspace)
+        Util.subprocess_run_no_input(cmd)
+
     def set_position(self, name, way):
         cmd = ''
         if(way == 'same'):
@@ -252,6 +293,7 @@ class Application:
         if (self.dual == True):
             self.i3_move()
         else:
+            self.current_output = self.primary
             self.i3_move_primary()
         self.dual = True
 
