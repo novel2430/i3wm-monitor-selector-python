@@ -177,7 +177,7 @@ class Application:
                 Util.subprocess_run_no_input(cmd)
                 self.update_primary(self.current_monitor)
                 self.monitors[self.current_monitor].update_resolution()
-            elif(res == 'on-off'):
+            elif(res == 'on-off-switch'):
                 if (self.monitors[self.current_monitor].is_on == True):
                     cmd = 'xrandr --output {} --off'.format(self.current_monitor)
                     self.monitors[self.current_monitor].is_on = False
