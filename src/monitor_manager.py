@@ -16,6 +16,8 @@ class Monitor:
         self.is_on = False
         self.state = 'same'
         self.workspaces = []
+        self.posX = 0
+        self.posY = 0
     def update_resolution(self):
         self.current_resolution = Util.current_resolution(self.name)
 
@@ -28,40 +30,39 @@ class Util:
         monitor_name = ''
         tmp_list = []
         on_flag = False
+        cur_x = 0
+        cur_y = 0
         for i in range(len(str_list)):
             cur = str_list[i]
-            re_res = re.search(' connected', cur)
+            re_res = Util.get_is_connect(cur)
             if (state == 0 and re_res != None):
                 state = 1
-                re_res = re.search('[\S]+', cur)
+                re_res = Util.get_monitor_name(cur)
                 if (re_res != None):
                     monitor_name = re_res.group()
-                re_res = re.search('[0-9]+x[0-9]+', cur)
+                re_res = Util.get_resolution(cur)
                 if(re_res != None):
+                    cur_x, cur_y = Util.get_position(re_res)
                     on_flag = True
             elif (state == 1 and cur[0] == ' '):
-                re_res = re.search('[0-9]+x[0-9]+', cur)
+                re_res = Util.get_resolution(cur)
                 if (re_res != None):
                     tmp_list.append(re_res.group())
             elif (state == 1 and cur[0] != ' '):
-                moni = Monitor(monitor_name, tmp_list.copy())
-                moni.is_on = on_flag
-                res[monitor_name] = moni
+                res[monitor_name] = Util.build_monitor(monitor_name, tmp_list, on_flag, cur_x, cur_y)
                 tmp_list.clear()
                 state = 0
                 on_flag = False
                 if (re_res != None):
-                    re_res = re.search('[\S]+', cur)
+                    re_res = Util.get_monitor_name(cur)
                     if (re_res != None):
                         monitor_name = re_res.group()
-                    re_res = re.search('[0-9]+x[0-9]+', cur)
+                    re_res = Util.get_resolution(cur)
                     if(re_res != None):
                         on_flag = True
                     state = 1
         if(len(tmp_list) > 0):
-            moni = Monitor(monitor_name, tmp_list.copy())
-            moni.is_on = on_flag
-            res[monitor_name] = moni
+            res[monitor_name] = Util.build_monitor(monitor_name, tmp_list, on_flag, cur_x, cur_y)
         return res
 
     @staticmethod
@@ -69,6 +70,49 @@ class Util:
         cmd_xrandr = 'xrandr'
         res = Util.subprocess_run_no_input(cmd_xrandr)
         return Util.parsering(res)
+
+    @staticmethod
+    def build_monitor(monitor_name, resolu_list, on_flag, pos_x, pos_y):
+        res = Monitor(monitor_name, resolu_list.copy())
+        res.is_on = on_flag
+        res.posX = pos_x
+        res.posY = pos_y
+        return res
+
+    @staticmethod
+    def get_monitor_name(line):
+        re_res = re.search('[\S]+', line)
+        return re_res
+
+    @staticmethod
+    def get_resolution(line):
+        re_res = re.search('[0-9]+x[0-9]+', line)
+        return re_res
+
+    @staticmethod
+    def get_is_connect(line):
+        re_res = re.search(' connected', line)
+        return re_res
+
+    @staticmethod
+    def get_position(resolu):
+        line = resolu.string
+        re_res = re.search('\+[0-9]+\+[0-9]+', line)
+        if(re_res != None):
+            st = re_res.group()
+            start = 0
+            pos_x = 0
+            pos_y = 0
+            re_res = re.search('[0-9]+', st[start:len(st)])
+            if(re_res != None):
+                pos_x = re_res.group()
+                start += re_res.end()
+            re_res = re.search('[0-9]+', st[start:len(st)])
+            if(re_res != None):
+                pos_y = re_res.group()
+            return pos_x, pos_y 
+        return 0, 0
+
 
     @staticmethod
     def get_primary():
@@ -139,6 +183,26 @@ class Application:
         self.dual = self.is_dual()
         self.current_output = self.i3_get_current_focus_workspace_output()
         self.current_workspace = self.i3_get_current_focus_workspace()
+        self.setup_monitor_workspace()
+        self.set_monitors_state()
+
+    def set_monitors_state(self):
+        for m in self.monitors.keys():
+            self.set_monitor_state(m)
+            print(self.monitors[m].state)
+
+    def set_monitor_state(self, monitor_name):
+        cur = self.monitors[monitor_name]
+        if(cur.posX < self.monitors[self.primary].posX):
+            cur.state = 'left'
+        elif(cur.posX > self.monitors[self.primary].posX):
+            cur.state = 'right'
+        elif(cur.posY < self.monitors[self.primary].posY):
+            cur.state = 'above'
+        elif(cur.posY > self.monitors[self.primary].posY):
+            cur.state = 'below'
+        else:
+            cur.state = 'same'
 
     def run(self):
         respond = 'Main'
@@ -186,10 +250,9 @@ class Application:
                 if (self.monitors[self.current_monitor].is_on == True):
                     cmd = 'xrandr --output {} --off'.format(self.current_monitor)
                     self.monitors[self.current_monitor].is_on = False
+                    Util.subprocess_run_no_input(cmd)
                 else:
-                    cmd = 'xrandr --output {} --auto'.format(self.current_monitor)
-                    self.monitors[self.current_monitor].is_on = True
-                Util.subprocess_run_no_input(cmd)
+                    self.turn_on_monitor()
             elif(res == 'set resolution'):
                 self.menu_current_select = map_[res]
                 return 'Resolution'
@@ -222,6 +285,25 @@ class Application:
         cmd = 'rofi -monitor {} -selected-row {:d} -dmenu -theme-str "window {{width: 20%;}}" -mesg "{}"'.format(self.current_output, curr_select, message)
         return Util.subprocess_run_input(cmd, Util.build_string(list))
 
+    def turn_on_monitor(self):
+        cmd = ''
+        if(self.monitors[self.current_monitor].state != 'same'):
+            way = self.monitors[self.current_monitor].state
+            if(way == 'left' or way == 'right'):
+                cmd = 'xrandr --output {} --auto --output {} --{}-of {}'.format(self.current_monitor, self.current_monitor, way, self.primary)
+            else:
+               cmd = 'xrandr --output {} --auto --output {} --{} {}'.format(self.current_monitor, self.current_monitor, way, self.primary)
+            Util.subprocess_run_no_input(cmd)
+            for wn in self.monitors[self.current_monitor].workspaces:
+                self.i3_move_one(wn, self.current_monitor)
+            self.i3_set_background()
+        else:
+            cmd = 'xrandr --output {} --auto'.format(self.current_monitor)
+            Util.subprocess_run_no_input(cmd)
+        self.monitors[self.current_monitor].is_on = True
+        self.monitors[self.current_monitor].current_resolution = Util.current_resolution(self.current_monitor)
+
+
     def setup_monitor_workspace(self):
         if (self.dual):
             cmd = 'i3-msg -t get_workspaces'
@@ -232,7 +314,10 @@ class Application:
                 out = j.get('output')
                 self.monitors[out].workspaces.append(num)
             
-
+    def i3_move_one(self, workspace_num, monitor):
+        cmd = 'i3-msg "[workspace={:d}]" move workspace to output {}'.format(workspace_num, monitor)
+        Util.subprocess_run_no_input(cmd)
+        
     def i3_move(self):
         cmd = 'i3-msg -t get_workspaces'
         res = Util.subprocess_run_no_input(cmd)
@@ -240,8 +325,7 @@ class Application:
         for j in js:
             num = j.get('num')
             out = j.get('output')
-            cmd = 'i3-msg "[workspace={:d}]" move workspace to output {}'.format(num, out)
-            Util.subprocess_run_no_input(cmd)
+            self.i3_move_one(num, out)
         self.i3_set_background()
 
     def i3_move_primary(self):
@@ -279,6 +363,7 @@ class Application:
         Util.subprocess_run_no_input(cmd)
 
     def set_position(self, name, way):
+        self.monitors[name].state = way
         cmd = ''
         if(way == 'same'):
             cmd = 'xrandr --output {} --{}-as {}'.format(name, way, self.primary)
@@ -306,7 +391,7 @@ class Application:
             ch = Util.subprocess_run_no_input(cmd_xrandr)
             res = Util.subprocess_run_input(cmd_grep, ch)
             re_res = re.search('[0-9]+x[0-9]+\\+0\\+0', res)
-            if(re_res == None):
+            if(re_res == None and self.monitors[m].is_on):
                 return True
         return False
 
